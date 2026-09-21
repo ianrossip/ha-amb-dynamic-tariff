@@ -40,6 +40,10 @@ Data is retrieved from the public AMB tariff chart endpoint used by the official
 
 ## Changelog
 
+### 0.1.3
+- Restored Home Assistant's canonical `strings.json` translation source.
+- Fixed entity-name localization while keeping English (GB), English and Italian translations.
+
 ### 0.1.2
 - Improved Home Assistant localization.
 - Added English (GB), English and Italian translations.
