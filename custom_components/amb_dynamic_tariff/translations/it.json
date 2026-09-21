@@ -1,0 +1,5 @@
+{
+  "title": "Tariffa dinamica AMB",
+  "config": {"step":{"user":{"title":"Tariffa dinamica AMB","description":"Configura le fasce pubbliche della tariffa elettrica dinamica AMB."}},"abort":{"already_configured":"La tariffa dinamica AMB è già configurata."}},
+  "entity":{"sensor":{"current_tariff":{"name":"Tariffa attuale","state":{"low":"Bassa","high":"Alta","unknown":"Sconosciuta"}},"next_tariff":{"name":"Prossima tariffa","state":{"low":"Bassa","high":"Alta","unknown":"Sconosciuta"}},"next_change":{"name":"Prossimo cambio"},"today_schedule":{"name":"Fasce di oggi"},"tomorrow_schedule":{"name":"Fasce di domani"},"last_update":{"name":"Ultimo aggiornamento"}},"binary_sensor":{"low_tariff":{"name":"Tariffa bassa"}}}
+}
