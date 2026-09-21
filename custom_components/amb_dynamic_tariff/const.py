@@ -10,7 +10,10 @@ AMB_TARIFF_URL = (
     "tariffe-fornitori-energia-elettrica-bellinzona/"
 )
 
-UPDATE_INTERVAL = timedelta(minutes=15)
+# The AMB schedule is largely static once published, so hourly cloud polling is
+# sufficient. Tariff transitions are handled locally at their scheduled time.
+UPDATE_INTERVAL = timedelta(hours=1)
+POST_CHANGE_REFRESH_DELAY = 10
 
 COLOR_LOW = "#05DA3A"
 COLOR_HIGH = "#E3051B"
