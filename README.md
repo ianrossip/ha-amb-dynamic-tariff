@@ -33,6 +33,8 @@ A graphical Lovelace card can be added to show today's and tomorrow's tariff per
 
 ![AMB Dynamic Tariff Lovelace card](images/AMB-tariff.png)
 
+The card uses **Low rate / High rate** for the currently applied price level, while **AMB Dynamic Tariff** remains the name of the tariff scheme. The vertical **NOW** marker follows the current time and the next change is highlighted below today's timeline.
+
 ### Requirement
 
 Install **Button Card** (`custom-cards/button-card`) from **HACS → Frontend**.
@@ -357,6 +359,7 @@ Data is retrieved from the public AMB tariff chart endpoint used by the official
 ### 0.1.4
 - Improved English UI terminology: `Current rate`, `Next rate`, and `Low rate`.
 - Added Lovelace timeline card documentation and screenshot.
+- Added a live **NOW** marker and next-change highlighting to the example card.
 
 ### 0.1.3
 - Restored Home Assistant's canonical `strings.json` translation source.
