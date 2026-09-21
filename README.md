@@ -2,7 +2,7 @@
 
 Unofficial Home Assistant custom integration for the public **AMB (Azienda Multiservizi Bellinzona) Dynamic Tariff** schedule.
 
-The integration reads the public AMB tariff chart endpoint and exposes the current tariff, next tariff change, today's and tomorrow's schedules, and a low-tariff binary sensor.
+The integration reads the public AMB tariff chart endpoint and exposes the current rate, next rate change, today's and tomorrow's schedules, and a low-rate binary sensor.
 
 ## Installation with HACS
 
@@ -17,19 +17,19 @@ No `configuration.yaml` changes are required.
 
 ## Entities
 
-- Current tariff (`low`, `high`, or `unknown`)
-- Next tariff
+- Current rate (`low`, `high`, or `unknown`)
+- Next rate
 - Next change
 - Today's schedule
 - Tomorrow's schedule
-- Low tariff binary sensor
+- Low rate binary sensor
 - Last update diagnostic sensor
 
 The schedule sensors expose the complete periods in their `periods` attribute.
 
 ## Lovelace tariff timeline card
 
-A graphical Lovelace card can be added to show today's and tomorrow's tariff periods as proportional 24-hour timelines, together with the current tariff, the next tariff change, and a live **NOW** marker.
+A graphical Lovelace card can be added to show today's and tomorrow's tariff periods as proportional 24-hour timelines, together with the current rate, the next rate change, and a live **NOW** marker.
 
 ![AMB Dynamic Tariff Lovelace card](images/AMB-tariff.png)
 
@@ -210,9 +210,9 @@ custom_fields:
 
       const statusText =
         current === 'low'
-          ? 'LOW TARIFF'
+          ? 'LOW RATE'
           : current === 'high'
-            ? 'HIGH TARIFF'
+            ? 'HIGH RATE'
             : 'UNKNOWN';
 
       const now = new Date();
@@ -331,8 +331,8 @@ custom_fields:
             font-size:12px;
             opacity:.75;
           ">
-            <span><span style="color:#21c45b">●</span> Low tariff</span>
-            <span><span style="color:#e53935">●</span> High tariff</span>
+            <span><span style="color:#21c45b">●</span> Low rate</span>
+            <span><span style="color:#e53935">●</span> High rate</span>
           </div>
         </div>
       `;
