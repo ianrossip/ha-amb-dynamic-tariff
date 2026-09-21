@@ -1,0 +1,41 @@
+{
+  "title": "AMB Dynamic Tariff",
+  "config": {
+    "step": {
+      "user": {
+        "title": "AMB Dynamic Tariff",
+        "description": "Set up the public AMB dynamic electricity tariff schedule."
+      }
+    },
+    "abort": {
+      "already_configured": "AMB Dynamic Tariff is already configured."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "current_tariff": {
+        "name": "Current tariff",
+        "state": {
+          "low": "Low",
+          "high": "High",
+          "unknown": "Unknown"
+        }
+      },
+      "next_tariff": {
+        "name": "Next tariff",
+        "state": {
+          "low": "Low",
+          "high": "High",
+          "unknown": "Unknown"
+        }
+      },
+      "next_change": {"name": "Next change"},
+      "today_schedule": {"name": "Today's schedule"},
+      "tomorrow_schedule": {"name": "Tomorrow's schedule"},
+      "last_update": {"name": "Last update"}
+    },
+    "binary_sensor": {
+      "low_tariff": {"name": "Low tariff"}
+    }
+  }
+}
