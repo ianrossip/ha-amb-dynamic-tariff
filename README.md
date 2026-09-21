@@ -31,6 +31,8 @@ The schedule sensors expose the complete periods in their `periods` attribute.
 
 A graphical Lovelace card can be added to show today's and tomorrow's tariff periods as proportional 24-hour timelines, together with the current tariff, the next tariff change, and a live **NOW** marker.
 
+![AMB Dynamic Tariff Lovelace card](images/AMB-tariff.png)
+
 ### Requirement
 
 Install **Button Card** (`custom-cards/button-card`) from **HACS → Frontend**.
