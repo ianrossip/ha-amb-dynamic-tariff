@@ -14,7 +14,7 @@
   "entity": {
     "sensor": {
       "current_tariff": {
-        "name": "Current tariff",
+        "name": "Current rate",
         "state": {
           "low": "Low",
           "high": "High",
@@ -22,7 +22,7 @@
         }
       },
       "next_tariff": {
-        "name": "Next tariff",
+        "name": "Next rate",
         "state": {
           "low": "Low",
           "high": "High",
@@ -35,7 +35,7 @@
       "last_update": {"name": "Last update"}
     },
     "binary_sensor": {
-      "low_tariff": {"name": "Low tariff"}
+      "low_tariff": {"name": "Low rate"}
     }
   }
 }
