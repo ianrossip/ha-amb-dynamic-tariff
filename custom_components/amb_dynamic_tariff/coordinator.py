@@ -1,13 +1,12 @@
 """Data coordinator for AMB Dynamic Tariff."""
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, time, timedelta, timezone
 import logging
 from typing import Any
 
 from aiohttp import ClientError
 
-from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_track_point_in_time
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -26,6 +25,7 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+DAILY_REFRESH_TIME = time(0, 5)
 
 
 def _tariff_from_color(color):
@@ -87,18 +87,31 @@ class AmbTariffCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._points: list[dict[str, Any]] = []
         self._cancel_transition = None
         self._cancel_post_change_refresh = None
+        self._cancel_daily_refresh = None
 
     async def async_shutdown(self) -> None:
         """Cancel scheduled callbacks when the config entry is unloaded."""
-        self._cancel_scheduled_callbacks()
+        self._cancel_all_scheduled_callbacks()
 
-    def _cancel_scheduled_callbacks(self) -> None:
+    def _cancel_all_scheduled_callbacks(self) -> None:
+        self._cancel_transition_timer()
+        self._cancel_post_change_refresh_timer()
+        self._cancel_daily_refresh_timer()
+
+    def _cancel_transition_timer(self) -> None:
         if self._cancel_transition is not None:
             self._cancel_transition()
             self._cancel_transition = None
+
+    def _cancel_post_change_refresh_timer(self) -> None:
         if self._cancel_post_change_refresh is not None:
             self._cancel_post_change_refresh()
             self._cancel_post_change_refresh = None
+
+    def _cancel_daily_refresh_timer(self) -> None:
+        if self._cancel_daily_refresh is not None:
+            self._cancel_daily_refresh()
+            self._cancel_daily_refresh = None
 
     async def _fetch_day(self, day):
         request_dt = datetime(day.year, day.month, day.day, 12, tzinfo=timezone.utc)
@@ -112,7 +125,7 @@ class AmbTariffCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 headers={
                     "Accept": "application/json",
                     "Content-Type": "application/json",
-                    "User-Agent": "HomeAssistant-AMB-Dynamic-Tariff/0.1.5-dev",
+                    "User-Agent": "HomeAssistant-AMB-Dynamic-Tariff/0.1.5-dev.2",
                 },
                 timeout=15,
             ) as response:
@@ -163,13 +176,8 @@ class AmbTariffCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         }
 
     def _schedule_next_transition(self) -> None:
-        """Update state exactly at the next known tariff change."""
-        if self._cancel_transition is not None:
-            self._cancel_transition()
-            self._cancel_transition = None
-        if self._cancel_post_change_refresh is not None:
-            self._cancel_post_change_refresh()
-            self._cancel_post_change_refresh = None
+        """Schedule only the next local tariff transition."""
+        self._cancel_transition_timer()
 
         if not self.data:
             return
@@ -182,6 +190,29 @@ class AmbTariffCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self.hass, self._async_handle_transition, next_change
         )
 
+    def _schedule_post_change_refresh(self, transition_time: datetime) -> None:
+        """Schedule an independent AMB verification after a tariff change."""
+        self._cancel_post_change_refresh_timer()
+        refresh_at = transition_time + timedelta(seconds=POST_CHANGE_REFRESH_DELAY)
+        self._cancel_post_change_refresh = async_track_point_in_time(
+            self.hass, self._async_post_change_refresh, refresh_at
+        )
+
+    def _schedule_daily_refresh(self) -> None:
+        """Schedule an independent AMB refresh every day at 00:05 local time."""
+        self._cancel_daily_refresh_timer()
+
+        now = dt_util.now()
+        refresh_at = datetime.combine(
+            now.date(), DAILY_REFRESH_TIME, tzinfo=dt_util.DEFAULT_TIME_ZONE
+        )
+        if refresh_at <= now:
+            refresh_at += timedelta(days=1)
+
+        self._cancel_daily_refresh = async_track_point_in_time(
+            self.hass, self._async_daily_refresh, refresh_at
+        )
+
     async def _async_handle_transition(self, _now) -> None:
         """Apply a known tariff change locally, then verify it with AMB."""
         self._cancel_transition = None
@@ -192,19 +223,23 @@ class AmbTariffCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 self._build_data(now, self.data["last_update"])
             )
 
-        # Schedule the following known transition immediately.
+        # These timers are independent: scheduling the next transition must
+        # never cancel the pending post-change cloud verification.
         self._schedule_next_transition()
-
-        # Verify the cloud schedule shortly after the transition. This refresh
-        # is intentionally delayed so AMB has time to reflect the new period.
-        refresh_at = now + timedelta(seconds=POST_CHANGE_REFRESH_DELAY)
-        self._cancel_post_change_refresh = async_track_point_in_time(
-            self.hass, self._async_post_change_refresh, refresh_at
-        )
+        self._schedule_post_change_refresh(now)
 
     async def _async_post_change_refresh(self, _now) -> None:
+        """Verify the schedule with AMB shortly after a local transition."""
         self._cancel_post_change_refresh = None
         await self.async_request_refresh()
+
+    async def _async_daily_refresh(self, _now) -> None:
+        """Refresh AMB shortly after midnight and schedule the next day."""
+        self._cancel_daily_refresh = None
+        try:
+            await self.async_request_refresh()
+        finally:
+            self._schedule_daily_refresh()
 
     async def _async_update_data(self):
         today = dt_util.now().date()
@@ -223,10 +258,11 @@ class AmbTariffCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         now = dt_util.now()
         data = self._build_data(now, dt_util.utcnow())
 
-        # DataUpdateCoordinator assigns the returned data after this method
-        # finishes. Schedule the callback on the next event-loop turn so it
-        # sees the freshly assigned coordinator data.
+        # DataUpdateCoordinator assigns the returned data after this method.
+        # Re-arm only the transition and daily timers; neither may cancel the
+        # independent post-change verification timer.
         self.hass.loop.call_soon(self._schedule_next_transition)
+        self.hass.loop.call_soon(self._schedule_daily_refresh)
         return data
 
     async def _async_fetch_days(self, days):
