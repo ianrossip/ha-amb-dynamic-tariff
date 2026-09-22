@@ -2,7 +2,7 @@
 
 Unofficial Home Assistant custom integration for the public **AMB (Azienda Multiservizi Bellinzona) Dynamic Tariff** schedule.
 
-The integration reads the public AMB tariff chart endpoint and exposes the current rate, next rate change, today's and tomorrow's schedules, and a low-rate binary sensor.
+The integration reads the public AMB tariff chart endpoint and exposes the current rate, next rate change, yesterday's, today's and tomorrow's schedules, and a low-rate binary sensor.
 
 ## Installation with HACS
 
@@ -20,6 +20,7 @@ No `configuration.yaml` changes are required.
 - Current rate (`low`, `high`, or `unknown`)
 - Next rate
 - Next change
+- Yesterday's schedule
 - Today's schedule
 - Tomorrow's schedule
 - Low rate binary sensor
@@ -31,7 +32,7 @@ The schedule sensors expose the complete periods in their `periods` attribute.
 
 A graphical Lovelace card can be added to show today's and tomorrow's tariff periods as proportional 24-hour timelines, together with the current rate, the next rate change, and a live **NOW** marker.
 
-![AMB Dynamic Tariff Lovelace card](images/AMB-tariff.png)
+![AMB Dynamic Tariff Lovelace card](images/card015.png)
 
 The card uses **Low rate / High rate** for the currently applied price level, while **AMB Dynamic Tariff** remains the name of the tariff scheme. The vertical **NOW** marker follows the current time and the next change is highlighted below today's timeline.
 
@@ -63,6 +64,7 @@ triggers_update:
   - sensor.amb_dynamic_tariff_next_change
   - sensor.amb_dynamic_tariff_today_s_schedule
   - sensor.amb_dynamic_tariff_tomorrow_s_schedule
+  - sensor.amb_dynamic_tariff_last_update
   - sensor.time
 
 styles:
@@ -88,8 +90,12 @@ custom_fields:
         states['sensor.amb_dynamic_tariff_current_tariff'];
       const nextEntity =
         states['sensor.amb_dynamic_tariff_next_change'];
+      const lastUpdateEntity =
+        states['sensor.amb_dynamic_tariff_last_update'];
 
       const current = currentEntity?.state ?? 'unknown';
+      const LOW_COLOR = '#21c45b';
+      const HIGH_COLOR = '#e53935';
 
       const timeToMinutes = (time) => {
         if (time === '00:00') return 0;
@@ -99,7 +105,7 @@ custom_fields:
 
       const makeBar = (periods) => {
         if (!periods || !periods.length) {
-          return `<div style="opacity:.6">Schedule unavailable</div>`;
+          return `<div style="opacity:.6;height:28px;display:flex;align-items:center;">Schedule unavailable</div>`;
         }
 
         return `
@@ -122,7 +128,7 @@ custom_fields:
 
               const duration = end - start;
               const width = duration / 1440 * 100;
-              const color = p.tariff === 'low' ? '#21c45b' : '#e53935';
+              const color = p.tariff === 'low' ? LOW_COLOR : HIGH_COLOR;
 
               return `
                 <div
@@ -158,7 +164,7 @@ custom_fields:
       `;
 
       const makeTimes = (periods, highlightTime = null) => {
-        if (!periods || !periods.length) return '';
+        if (!periods || periods.length < 2) return '';
 
         return `
           <div style="
@@ -167,22 +173,23 @@ custom_fields:
             gap:6px;
             flex-wrap:wrap;
             font-size:12px;
-            opacity:.78;
             margin-top:8px;
           ">
-            ${periods.slice(0,-1).map(p => {
+            ${periods.slice(0,-1).map((p, index) => {
+              const nextPeriod = periods[index + 1];
+              const color = nextPeriod.tariff === 'low' ? LOW_COLOR : HIGH_COLOR;
               const highlight = p.end_time === highlightTime;
 
               return `
                 <span style="
-                  ${highlight
-                    ? `font-weight:700;color:var(--primary-text-color);opacity:1;`
-                    : ''}
+                  color:${color};
+                  opacity:${highlight ? '1' : '.85'};
+                  font-weight:${highlight ? '700' : '500'};
                 ">
                   ${p.end_time}
                 </span>
               `;
-            }).join('<span>·</span>')}
+            }).join('<span style="color:var(--secondary-text-color);opacity:.55;">·</span>')}
           </div>
         `;
       };
@@ -203,11 +210,17 @@ custom_fields:
         });
       }
 
+      let lastUpdate = '';
+      if (lastUpdateEntity && !['unknown','unavailable','none'].includes(lastUpdateEntity.state)) {
+        const d = new Date(lastUpdateEntity.state);
+        lastUpdate = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+
       const statusColor =
         current === 'low'
-          ? '#21c45b'
+          ? LOW_COLOR
           : current === 'high'
-            ? '#e53935'
+            ? HIGH_COLOR
             : '#888';
 
       const statusText =
@@ -333,8 +346,12 @@ custom_fields:
             font-size:12px;
             opacity:.75;
           ">
-            <span><span style="color:#21c45b">●</span> Low rate</span>
-            <span><span style="color:#e53935">●</span> High rate</span>
+            <span><span style="color:${LOW_COLOR}">●</span> Low rate</span>
+            <span><span style="color:${HIGH_COLOR}">●</span> High rate</span>
+          </div>
+
+          <div style="margin-top:14px;padding-top:10px;border-top:1px solid rgba(127,127,127,.25);font-size:11px;opacity:.55;text-align:right;">
+            Last updated: ${lastUpdate || 'unavailable'}
           </div>
         </div>
       `;
@@ -349,12 +366,27 @@ Data is retrieved from the public AMB tariff chart endpoint used by the official
 
 ## Notes
 
-- Refresh interval: 15 minutes.
+- The AMB cloud schedule is refreshed hourly.
+- Tariff transitions are applied locally at the exact scheduled time, without waiting for a cloud poll.
+- AMB is refreshed again 10 seconds after each tariff transition as a verification.
+- Additional fixed refreshes run at 00:05 and 12:05 local time.
+- Tomorrow's schedule remains unavailable until AMB publishes valid next-day data.
 - Duplicate timestamps are de-duplicated.
 - Tariff prices are intentionally not included; this integration only handles the dynamic high/low schedule.
 - This project is unofficial and is not affiliated with or endorsed by AMB.
 
 ## Changelog
+
+### 0.1.5
+- Added Yesterday's schedule sensor.
+- Added independent hourly cloud refreshes.
+- Added fixed refreshes at 00:05 and 12:05 local time.
+- Tariff transitions now update locally at the exact scheduled time.
+- Added an AMB verification refresh 10 seconds after each tariff transition.
+- Tomorrow's schedule stays unavailable until AMB publishes valid next-day data.
+- AMB requests now follow the date/time approach observed on the official website.
+- Added local integration branding (`icon.png` and `icon@2x.png`).
+- Updated the Lovelace card with colored transition times and Last updated information.
 
 ### 0.1.4
 - Improved English UI terminology: `Current rate`, `Next rate`, and `Low rate`.
