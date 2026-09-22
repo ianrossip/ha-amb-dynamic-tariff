@@ -1,11 +1,13 @@
 {
   "domain": "amb_dynamic_tariff",
   "name": "AMB Dynamic Tariff",
-  "codeowners": ["@ianrossip"],
+  "codeowners": [
+    "@ianrossip"
+  ],
   "config_flow": true,
   "documentation": "https://github.com/ianrossip/ha-amb-dynamic-tariff",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/ianrossip/ha-amb-dynamic-tariff/issues",
   "requirements": [],
-  "version": "0.1.5-dev.1"
+  "version": "0.1.5-dev.2"
 }
